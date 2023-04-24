@@ -2,32 +2,23 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"syscall"
 	"time"
 
-	"github.com/d2r2/go-dht"
 	"github.com/d2r2/go-shell"
-
-	logger "github.com/d2r2/go-logger"
-)
-
-var lg = logger.NewPackageLogger("main",
-	logger.DebugLevel,
-	// logger.InfoLevel,
+	"github.com/totomz/go-dht"
 )
 
 func main() {
-	defer logger.FinalizeLogger()
 
-	lg.Notify("***************************************************************************************************")
-	lg.Notify("*** You can change verbosity of output, to modify logging level of module \"dht\"")
-	lg.Notify("*** Uncomment/comment corresponding lines with call to ChangePackageLogLevel(...)")
-	lg.Notify("***************************************************************************************************")
-	lg.Notify("*** Massive stress test of sensor reading, printing in the end summary statistical results")
-	lg.Notify("***************************************************************************************************")
-	// Uncomment/comment next line to suppress/increase verbosity of output
-	logger.ChangePackageLogLevel("dht", logger.InfoLevel)
+	log.Println("***************************************************************************************************")
+	log.Println("*** You can change verbosity of output, to modify logging level of module \"dht\"")
+	log.Println("*** Uncomment/comment corresponding lines with call to ChangePackageLogLevel(...)")
+	log.Println("***************************************************************************************************")
+	log.Println("*** Massive stress test of sensor reading, printing in the end summary statistical results")
+	log.Println("***************************************************************************************************")
 
 	// create context with cancellation possibility
 	ctx, cancel := context.WithCancel(context.Background())
@@ -58,18 +49,17 @@ func main() {
 		totalRetried += retried
 		if err != nil && ctx.Err() == nil {
 			totalFailed++
-			lg.Error(err)
+			log.Printf("error: %v", err)
 			continue
 		}
 		// print temperature and humidity
 		if ctx.Err() == nil {
-			lg.Infof("Sensor = %v: Temperature = %v*C, Humidity = %v%% (retried %d times)",
-				sensorType, temperature, humidity, retried)
+			log.Printf("Sensor = %v: Temperature = %v*C, Humidity = %v%% (retried %d times)", sensorType, temperature, humidity, retried)
 		}
 		select {
 		// Check for termination request.
 		case <-ctx.Done():
-			lg.Errorf("Termination pending: %s", ctx.Err())
+			log.Printf("error: Termination pending: %s", ctx.Err())
 			term = true
 			// sleep 1.5-2 sec before next round
 			// (recommended by specification as "collecting period")
@@ -79,8 +69,7 @@ func main() {
 			break
 		}
 	}
-	lg.Info("====================================================================")
-	lg.Infof("Total measured = %v, total retried = %v, total failed = %v",
-		totalMeasured, totalRetried, totalFailed)
-	lg.Info("====================================================================")
+	log.Println("====================================================================")
+	log.Printf("Total measured = %v, total retried = %v, total failed = %v", totalMeasured, totalRetried, totalFailed)
+	log.Println("====================================================================")
 }

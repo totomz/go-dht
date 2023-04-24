@@ -1,4 +1,4 @@
-//--------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
 //
 // Copyright (c) 2015-2019 Denis Dyakov
 //
@@ -17,7 +17,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-//--------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
 
 package dht
 
@@ -28,14 +28,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/d2r2/go-shell"
 	"os"
 	"reflect"
 	"syscall"
 	"time"
 	"unsafe"
-
-	"github.com/d2r2/go-shell"
-	"github.com/davecgh/go-spew/spew"
 )
 
 // SensorType signify what sensor in use.
@@ -47,7 +45,7 @@ func (v SensorType) String() string {
 		return "DHT11"
 	} else if v == DHT12 {
 		return "DHT12"
-	} else if v == DHT22 || v == AM2302 {
+	} else if v == AM2302 {
 		return "DHT22|AM2302"
 	} else {
 		return "!!! unknown !!!"
@@ -61,7 +59,7 @@ func (v SensorType) GetHandshakeDuration() time.Duration {
 		return 18 * time.Millisecond
 	} else if v == DHT12 {
 		return 200 * time.Millisecond
-	} else if v == DHT22 || v == AM2302 {
+	} else if v == AM2302 {
 		return 18 * time.Millisecond
 	} else {
 		return 0
@@ -112,10 +110,10 @@ func dialDHTxxAndGetResponse(pin int, handshakeDur time.Duration,
 		var err error
 		if err2 != nil {
 			msg := C.GoString(err2.message)
-			err = errors.New(spew.Sprintf("Error during call C.dial_DHTxx_and_read(): %v", msg))
+			err = errors.New(fmt.Sprintf("Error during call C.dial_DHTxx_and_read(): %v", msg))
 			C.free_error(err2)
 		} else {
-			err = errors.New(spew.Sprintf("Error during call C.dial_DHTxx_and_read()"))
+			err = errors.New("error during call C.dial_DHTxx_and_read()")
 		}
 		return nil, err
 	}
@@ -162,11 +160,10 @@ func decodeByte(tLow, tHigh0, tHigh1 time.Duration, start int, pulses []Pulse) (
 		// Everything that less than this param is bit 0, bigger - bit 1.
 		// const HIGH_LOW_DUR_AVG = (24 + (70-24)/2) * time.Microsecond
 		if pulseH.Duration > HIGH_DUR_MAX {
-			return 0, fmt.Errorf("High edge value duration %v exceed "+
-				"maximum expected %v", pulseH.Duration, HIGH_DUR_MAX)
+			return 0, fmt.Errorf("high edge value duration %v exceed maximum expected %v", pulseH.Duration, HIGH_DUR_MAX)
 		}
 		if pulseH.Duration > HIGH_LOW_DUR_AVG {
-			//fmt.Printf("bit %d is high\n", 7-i)
+			// fmt.Printf("bit %d is high\n", 7-i)
 			b = b | (1 << uint(7-i))
 		}
 	}
@@ -181,9 +178,7 @@ func decodeDHTxxPulses(sensorType SensorType, pulses []Pulse) (temperature float
 	if len(pulses) >= 82 && len(pulses) <= 85 {
 		pulses = pulses[len(pulses)-82:]
 	} else {
-		printPulseArrayForDebug(pulses)
-		return -1, -1, fmt.Errorf("Can't decode pulse array received from "+
-			"DHTxx sensor, since incorrect length: %d", len(pulses))
+		return -1, -1, fmt.Errorf("can't decode pulse array received from DHTxx sensor, since incorrect length: %d", len(pulses))
 	}
 
 	pulses = pulses[:80]
@@ -222,17 +217,11 @@ func decodeDHTxxPulses(sensorType SensorType, pulses []Pulse) (temperature float
 	// produce data consistency check
 	calcSum := byte(b0 + b1 + b2 + b3)
 	if sum != calcSum {
-		err := errors.New(spew.Sprintf(
-			"CRCs doesn't match: checksum from sensor(%v) != "+
-				"calculated checksum(%v=%v+%v+%v+%v)",
-			sum, calcSum, b0, b1, b2, b3))
+		err := errors.New(fmt.Sprintf(
+			"CRCs doesn't match: checksum from sensor(%v) != calculated checksum(%v=%v+%v+%v+%v)", sum, calcSum, b0, b1, b2, b3))
 		return -1, -1, err
-	} else {
-		lg.Debugf("CRCs verified: checksum from sensor(%v) = calculated checksum(%v=%v+%v+%v+%v)",
-			sum, calcSum, b0, b1, b2, b3)
 	}
-	// debug output for 5 bytes
-	lg.Debugf("Decoded from DHTxx sensor: [%d, %d, %d, %d, %d]", b0, b1, b2, b3, sum)
+
 	// extract temperature and humidity depending on sensor type
 	temperature, humidity = 0.0, 0.0
 	if sensorType == DHT11 {
@@ -261,17 +250,6 @@ func decodeDHTxxPulses(sensorType SensorType, pulses []Pulse) (temperature float
 	return temperature, humidity, nil
 }
 
-// Print bunch of pulses for debug purpose.
-func printPulseArrayForDebug(pulses []Pulse) {
-	// var buf bytes.Buffer
-	// for i, pulse := range pulses {
-	// 	buf.WriteString(fmt.Sprintf("pulse %3d: %v, %v\n", i,
-	// 		pulse.Value, pulse.Duration))
-	// }
-	// lg.Debugf("Pulse count %d:\n%v", len(pulses), buf.String())
-	lg.Debugf("Pulses received from DHTxx sensor: %v", pulses)
-}
-
 // ReadDHTxx send activation request to DHTxx sensor via specific pin.
 // Then decode pulses sent back with asynchronous
 // protocol specific for DHTxx sensors.
@@ -294,8 +272,6 @@ func ReadDHTxx(sensorType SensorType, pin int,
 	if err != nil {
 		return -1, -1, err
 	}
-	// output debug information
-	printPulseArrayForDebug(pulses)
 	// decode pulses
 	temp, hum, err := decodeDHTxxPulses(sensorType, pulses)
 	if err != nil {
@@ -334,13 +310,13 @@ func ReadDHTxxWithRetry(sensorType SensorType, pin int, boostPerfFlag bool,
 // protocol specific for DHTxx sensors. Retry n times in case of failure.
 //
 // Input parameters:
-// 1) parent context; could be used to manage life-cycle
-//  of sensor request session from code outside;
-// 2) sensor type: DHT11, DHT22 (aka AM2302);
-// 3) pin number from gadget GPIO to interact with sensor;
-// 4) boost GPIO performance flag should be used for old devices
-//  such as Raspberry PI 1 (this will require root privileges);
-// 5) how many times to retry until success either counter is zeroed.
+//  1. parent context; could be used to manage life-cycle
+//     of sensor request session from code outside;
+//  2. sensor type: DHT11, DHT22 (aka AM2302);
+//  3. pin number from gadget GPIO to interact with sensor;
+//  4. boost GPIO performance flag should be used for old devices
+//     such as Raspberry PI 1 (this will require root privileges);
+//  5. how many times to retry until success either counter is zeroed.
 //
 // Return:
 // 1) temperature in Celsius;
@@ -366,7 +342,6 @@ func ReadDHTxxWithContextAndRetry(parent context.Context, sensorType SensorType,
 		temp, hum, err := ReadDHTxx(sensorType, pin, boostPerfFlag)
 		if err != nil {
 			if retry > 0 {
-				lg.Warning(err)
 				retry--
 				retried++
 				select {

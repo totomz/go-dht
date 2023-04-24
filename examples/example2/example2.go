@@ -3,17 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"time"
 
-	"github.com/d2r2/go-dht"
-	logger "github.com/d2r2/go-logger"
-)
-
-var lg = logger.NewPackageLogger("main",
-	logger.DebugLevel,
-	// logger.InfoLevel,
+	"github.com/totomz/go-dht"
 )
 
 var (
@@ -29,7 +24,6 @@ func init() {
 }
 
 func main() {
-	defer logger.FinalizeLogger()
 	// Uncomment/comment next line to suppress/increase verbosity of output
 	// logger.ChangePackageLogLevel("dht", logger.InfoLevel)
 
@@ -48,10 +42,10 @@ func main() {
 	temperature, humidity, retried, err :=
 		dht.ReadDHTxxWithRetry(sensorType, pin, boostPerfFlag, 10)
 	if err != nil {
-		lg.Fatal(err)
+		log.Fatal(err)
 	}
 
-	//fmt.Printf("Sensor = %v: Temperature = %v*C, Humidity = %v%% (retried %d times)\n",
+	// fmt.Printf("Sensor = %v: Temperature = %v*C, Humidity = %v%% (retried %d times)\n",
 	//	sensorType, temperature, humidity, retried)
 	// calculate vpd
 	// J. Win. (https://physics.stackexchange.com/users/1680/j-win),
@@ -69,5 +63,5 @@ func main() {
 
 	str := fmt.Sprintf("%s temperature=%f,humidity=%f,vpd=%f,retried=%d %d",
 		stype, temperature, humidity, vpd, retried, time.Now().UnixNano())
-	fmt.Fprintln(os.Stdout, str)
+	_, _ = fmt.Fprintln(os.Stdout, str)
 }
